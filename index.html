@@ -32,6 +32,26 @@
             margin-top: 0;
             color: #555;
             font-size: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        .section h2:hover {
+            color: #333;
+        }
+        .collapse-btn {
+            font-size: 14px;
+            color: #888;
+            font-weight: normal;
+        }
+        .section-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .section-content.collapsed {
+            max-height: 0 !important;
         }
         .input-group {
             margin-bottom: 15px;
@@ -114,110 +134,125 @@
         <h1>Kiln Temperature Monitor & Modeling</h1>
 
         <div class="section">
-            <h2>Temperature Data Points</h2>
-            <p class="help-text">Enter timestamps as hour:minute (24-hour format, can exceed 24). Temperature typically in Celsius.</p>
-
-            <div class="input-group">
-                <label>Paste from Excel/Sheets:</label>
-                <button onclick="showBulkPaste()">Show Bulk Paste</button>
-                <button onclick="clearAllData()" class="delete">Clear All Data</button>
-            </div>
-            <div id="bulkPasteArea" style="display: none; margin-bottom: 15px;">
-                <textarea id="bulkData" rows="8" placeholder="Paste tab-separated or comma-separated data here. Format: Time Temperature (one per line)&#10;Example:&#10;14:30	500&#10;15:00	750&#10;15:30	900"></textarea>
-                <div style="margin-top: 10px;">
-                    <button onclick="importBulkData()">Import Data</button>
-                    <button onclick="hideBulkPaste()">Cancel</button>
-                </div>
-            </div>
-
-            <div class="input-group">
-                <label>Time (HH:MM):</label>
-                <input type="text" id="timestamp" placeholder="14:30">
-                <label style="margin-left: 20px;">Temperature:</label>
-                <input type="number" id="temperature" placeholder="500" step="0.1">
-                <button onclick="addDataPoint()">Add Data Point</button>
-            </div>
-            <table class="data-table" id="dataTable">
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>Temperature</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="dataTableBody">
-                </tbody>
-            </table>
-        </div>
-
-        <div class="section">
-            <h2>Cooling Model Parameters</h2>
-            <p class="help-text">Adjust these parameters to fit the exponential decay curve to your cooling data.</p>
-            <div class="cooling-params">
-                <div class="input-group">
-                    <label>Cooling Start Point:</label>
-                    <select id="coolingStartPoint" onchange="onCoolingStartChanged()">
-                        <option value="auto">Auto-detect (peak temperature)</option>
-                    </select>
-                    <span class="help-text">Select when cooling begins</span>
-                </div>
-                <div class="input-group">
-                    <label>Ambient Temp:</label>
-                    <input type="number" id="ambientTemp" value="20" step="1">
-                    <span class="help-text">The minimum temperature the kiln will cool to</span>
-                </div>
-                <div class="input-group">
-                    <label>Decay Rate:</label>
-                    <input type="number" id="decayRate" value="0.5" step="0.01" min="0.01">
-                    <label style="width: auto; margin-left: 20px;">
-                        <input type="checkbox" id="autoFitDecay" checked onchange="onAutoFitChanged()">
-                        Auto-fit to data
-                    </label>
-                    <span class="help-text" style="display: block; margin-left: 150px;">How quickly the kiln cools (higher = faster cooling)</span>
-                </div>
-                <div class="input-group">
-                    <label>Extrapolate Hours:</label>
-                    <input type="number" id="extrapolateHours" value="12" step="1" min="1">
-                    <span class="help-text">How many hours to project the cooling curve</span>
-                </div>
-                <button onclick="updateChart()">Update Graph</button>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>Heating/Cooling Segments</h2>
-            <p class="help-text">Define programmed heating segments (future feature)</p>
-            <div class="input-group">
-                <label>Heating Speed (C/hr):</label>
-                <input type="number" id="heatingSpeed" placeholder="250" step="1">
-            </div>
-            <div class="input-group">
-                <label>Stop Temperature:</label>
-                <input type="number" id="stopTemp" placeholder="1000" step="1">
-            </div>
-            <div class="input-group">
-                <label>Hold Time (HH:MM):</label>
-                <input type="text" id="holdTime" placeholder="2:30">
-            </div>
-            <button onclick="addSegment()">Add Segment</button>
-            <table class="data-table" id="segmentTable" style="margin-top: 10px;">
-                <thead>
-                    <tr>
-                        <th>Heating Speed (C/hr)</th>
-                        <th>Stop Temp (C)</th>
-                        <th>Hold Time</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="segmentTableBody">
-                </tbody>
-            </table>
-        </div>
-
-        <div class="section">
             <h2>Temperature Graph</h2>
             <div id="chartContainer">
                 <canvas id="temperatureChart"></canvas>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 onclick="toggleSection('dataPointsContent')">
+                <span>Temperature Data Points</span>
+                <span class="collapse-btn" id="dataPointsContent-btn">[Collapse]</span>
+            </h2>
+            <div class="section-content" id="dataPointsContent">
+                <p class="help-text">Enter timestamps as hour:minute (24-hour format, can exceed 24). Temperature typically in Celsius.</p>
+
+                <div class="input-group">
+                    <label>Paste from Excel/Sheets:</label>
+                    <button onclick="showBulkPaste()">Show Bulk Paste</button>
+                    <button onclick="clearAllData()" class="delete">Clear All Data</button>
+                </div>
+                <div id="bulkPasteArea" style="display: none; margin-bottom: 15px;">
+                    <textarea id="bulkData" rows="8" placeholder="Paste tab-separated or comma-separated data here. Format: Time Temperature (one per line)&#10;Example:&#10;14:30	500&#10;15:00	750&#10;15:30	900"></textarea>
+                    <div style="margin-top: 10px;">
+                        <button onclick="importBulkData()">Import Data</button>
+                        <button onclick="hideBulkPaste()">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Time (HH:MM):</label>
+                    <input type="text" id="timestamp" placeholder="14:30">
+                    <label style="margin-left: 20px;">Temperature:</label>
+                    <input type="number" id="temperature" placeholder="500" step="0.1">
+                    <button onclick="addDataPoint()">Add Data Point</button>
+                </div>
+                <table class="data-table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Temperature</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 onclick="toggleSection('coolingContent')">
+                <span>Cooling Model Parameters</span>
+                <span class="collapse-btn" id="coolingContent-btn">[Collapse]</span>
+            </h2>
+            <div class="section-content" id="coolingContent">
+                <p class="help-text">Adjust these parameters to fit the exponential decay curve to your cooling data.</p>
+                <div class="cooling-params">
+                    <div class="input-group">
+                        <label>Cooling Start Point:</label>
+                        <select id="coolingStartPoint" onchange="onCoolingStartChanged()">
+                            <option value="auto">Auto-detect (peak temperature)</option>
+                        </select>
+                        <span class="help-text">Select when cooling begins</span>
+                    </div>
+                    <div class="input-group">
+                        <label>Ambient Temp:</label>
+                        <input type="number" id="ambientTemp" value="20" step="1">
+                        <span class="help-text">The minimum temperature the kiln will cool to</span>
+                    </div>
+                    <div class="input-group">
+                        <label>Decay Rate:</label>
+                        <input type="number" id="decayRate" value="0.5" step="0.01" min="0.01">
+                        <label style="width: auto; margin-left: 20px;">
+                            <input type="checkbox" id="autoFitDecay" checked onchange="onAutoFitChanged()">
+                            Auto-fit to data
+                        </label>
+                        <span class="help-text" style="display: block; margin-left: 150px;">How quickly the kiln cools (higher = faster cooling)</span>
+                    </div>
+                    <div class="input-group">
+                        <label>Extrapolate Hours:</label>
+                        <input type="number" id="extrapolateHours" value="12" step="1" min="1">
+                        <span class="help-text">How many hours to project the cooling curve</span>
+                    </div>
+                    <button onclick="updateChart()">Update Graph</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 onclick="toggleSection('segmentsContent')">
+                <span>Heating/Cooling Segments</span>
+                <span class="collapse-btn" id="segmentsContent-btn">[Collapse]</span>
+            </h2>
+            <div class="section-content" id="segmentsContent">
+                <p class="help-text">Define programmed heating segments (future feature)</p>
+                <div class="input-group">
+                    <label>Heating Speed (C/hr):</label>
+                    <input type="number" id="heatingSpeed" placeholder="250" step="1">
+                </div>
+                <div class="input-group">
+                    <label>Stop Temperature:</label>
+                    <input type="number" id="stopTemp" placeholder="1000" step="1">
+                </div>
+                <div class="input-group">
+                    <label>Hold Time (HH:MM):</label>
+                    <input type="text" id="holdTime" placeholder="2:30">
+                </div>
+                <button onclick="addSegment()">Add Segment</button>
+                <table class="data-table" id="segmentTable" style="margin-top: 10px;">
+                    <thead>
+                        <tr>
+                            <th>Heating Speed (C/hr)</th>
+                            <th>Stop Temp (C)</th>
+                            <th>Hold Time</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="segmentTableBody">
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

@@ -74,17 +74,30 @@ function updateDataTable() {
 
     // Update cooling start point dropdown
     updateCoolingStartDropdown();
+
+    // Update section height after table changes
+    setTimeout(() => updateSectionHeight('dataPointsContent'), 0);
 }
 
 // Show bulk paste area
 function showBulkPaste() {
     document.getElementById('bulkPasteArea').style.display = 'block';
+    updateSectionHeight('dataPointsContent');
 }
 
 // Hide bulk paste area
 function hideBulkPaste() {
     document.getElementById('bulkPasteArea').style.display = 'none';
     document.getElementById('bulkData').value = '';
+    updateSectionHeight('dataPointsContent');
+}
+
+// Update section height after content changes
+function updateSectionHeight(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (section && !section.classList.contains('collapsed')) {
+        section.style.maxHeight = section.scrollHeight + 'px';
+    }
 }
 
 // Import bulk data from textarea
@@ -179,6 +192,9 @@ function updateCoolingStartDropdown() {
         select.value = 'auto';
         manualCoolingStartIndex = null;
     }
+
+    // Update section height after dropdown changes
+    setTimeout(() => updateSectionHeight('coolingContent'), 0);
 }
 
 // Handle cooling start point change
@@ -240,6 +256,9 @@ function updateSegmentTable() {
         deleteBtn.onclick = () => deleteSegment(index);
         actionCell.appendChild(deleteBtn);
     });
+
+    // Update section height after table changes
+    setTimeout(() => updateSectionHeight('segmentsContent'), 0);
 }
 
 // Calculate exponential decay for cooling
@@ -490,7 +509,31 @@ function updateChart() {
     });
 }
 
-// Initialize chart on page load
+// Toggle section collapse/expand
+function toggleSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    const btn = document.getElementById(sectionId + '-btn');
+
+    if (section.classList.contains('collapsed')) {
+        section.classList.remove('collapsed');
+        section.style.maxHeight = section.scrollHeight + 'px';
+        btn.textContent = '[Collapse]';
+    } else {
+        section.style.maxHeight = section.scrollHeight + 'px';
+        // Force reflow
+        section.offsetHeight;
+        section.classList.add('collapsed');
+        btn.textContent = '[Expand]';
+    }
+}
+
+// Initialize section heights and chart on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Set initial max-height for all section-content divs
+    const sections = document.querySelectorAll('.section-content');
+    sections.forEach(section => {
+        section.style.maxHeight = section.scrollHeight + 'px';
+    });
+
     updateChart();
 });
