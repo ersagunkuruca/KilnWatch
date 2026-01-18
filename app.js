@@ -2,6 +2,7 @@
 let dataPoints = [];
 let segments = [];
 let chart = null;
+let manualCoolingStartIndex = null;
 
 // Convert time string (HH:MM) to decimal hours
 function timeToHours(timeStr) {
@@ -70,6 +71,130 @@ function updateDataTable() {
         deleteBtn.onclick = () => deleteDataPoint(index);
         actionCell.appendChild(deleteBtn);
     });
+
+    // Update cooling start point dropdown
+    updateCoolingStartDropdown();
+}
+
+// Show bulk paste area
+function showBulkPaste() {
+    document.getElementById('bulkPasteArea').style.display = 'block';
+}
+
+// Hide bulk paste area
+function hideBulkPaste() {
+    document.getElementById('bulkPasteArea').style.display = 'none';
+    document.getElementById('bulkData').value = '';
+}
+
+// Import bulk data from textarea
+function importBulkData() {
+    const bulkData = document.getElementById('bulkData').value;
+    const lines = bulkData.split('\n');
+    let importCount = 0;
+    let errorCount = 0;
+
+    for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+
+        // Try tab-separated first, then comma-separated, then space-separated
+        let parts = line.split('\t');
+        if (parts.length < 2) {
+            parts = line.split(',');
+        }
+        if (parts.length < 2) {
+            parts = line.split(/\s+/);
+        }
+
+        if (parts.length < 2) {
+            errorCount++;
+            continue;
+        }
+
+        const timestamp = parts[0].trim();
+        const temperature = parseFloat(parts[1].trim());
+
+        if (isNaN(temperature)) {
+            errorCount++;
+            continue;
+        }
+
+        const hours = timeToHours(timestamp);
+        if (hours === null) {
+            errorCount++;
+            continue;
+        }
+
+        dataPoints.push({ time: timestamp, hours: hours, temp: temperature });
+        importCount++;
+    }
+
+    dataPoints.sort((a, b) => a.hours - b.hours);
+
+    if (importCount > 0) {
+        updateDataTable();
+        updateChart();
+        hideBulkPaste();
+        alert(`Imported ${importCount} data point(s)` + (errorCount > 0 ? `. ${errorCount} line(s) had errors and were skipped.` : ''));
+    } else {
+        alert('No valid data found. Please check the format.');
+    }
+}
+
+// Clear all data points
+function clearAllData() {
+    if (dataPoints.length === 0) return;
+
+    if (confirm('Are you sure you want to clear all data points?')) {
+        dataPoints = [];
+        manualCoolingStartIndex = null;
+        updateDataTable();
+        updateChart();
+    }
+}
+
+// Update cooling start point dropdown
+function updateCoolingStartDropdown() {
+    const select = document.getElementById('coolingStartPoint');
+
+    // Save current selection
+    const currentValue = select.value;
+
+    // Clear existing options except auto
+    select.innerHTML = '<option value="auto">Auto-detect (peak temperature)</option>';
+
+    // Add option for each data point
+    dataPoints.forEach((point, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `${point.time} (${point.temp.toFixed(1)}°C)`;
+        select.appendChild(option);
+    });
+
+    // Restore selection if possible
+    if (currentValue !== 'auto' && parseInt(currentValue) < dataPoints.length) {
+        select.value = currentValue;
+    } else {
+        select.value = 'auto';
+        manualCoolingStartIndex = null;
+    }
+}
+
+// Handle cooling start point change
+function onCoolingStartChanged() {
+    const select = document.getElementById('coolingStartPoint');
+    if (select.value === 'auto') {
+        manualCoolingStartIndex = null;
+    } else {
+        manualCoolingStartIndex = parseInt(select.value);
+    }
+    updateChart();
+}
+
+// Handle auto-fit checkbox change
+function onAutoFitChanged() {
+    updateChart();
 }
 
 // Add a heating segment
@@ -170,7 +295,12 @@ function fitCoolingModel(coolingPoints, ambientTemp) {
 function identifyCoolingPhase() {
     if (dataPoints.length < 2) return null;
 
-    // Find the peak temperature (start of cooling)
+    // If manual cooling start is set, use it
+    if (manualCoolingStartIndex !== null && manualCoolingStartIndex < dataPoints.length) {
+        return dataPoints.slice(manualCoolingStartIndex);
+    }
+
+    // Auto-detect: Find the peak temperature (start of cooling)
     let peakIndex = 0;
     let peakTemp = dataPoints[0].temp;
 
@@ -215,9 +345,10 @@ function updateChart() {
         if (coolingPoints && coolingPoints.length > 0) {
             const startPoint = coolingPoints[0];
 
-            // Auto-fit decay rate if we have enough cooling data
+            // Auto-fit decay rate if checkbox is checked and we have enough cooling data
             let effectiveDecayRate = decayRate;
-            if (coolingPoints.length >= 3) {
+            const autoFit = document.getElementById('autoFitDecay').checked;
+            if (autoFit && coolingPoints.length >= 3) {
                 effectiveDecayRate = fitCoolingModel(coolingPoints, ambientTemp);
                 // Update the UI with the fitted value
                 document.getElementById('decayRate').value = effectiveDecayRate.toFixed(3);

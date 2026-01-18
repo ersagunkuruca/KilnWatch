@@ -93,6 +93,20 @@
             color: #666;
             font-style: italic;
         }
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        select {
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 300px;
+        }
     </style>
 </head>
 <body>
@@ -102,6 +116,20 @@
         <div class="section">
             <h2>Temperature Data Points</h2>
             <p class="help-text">Enter timestamps as hour:minute (24-hour format, can exceed 24). Temperature typically in Celsius.</p>
+
+            <div class="input-group">
+                <label>Paste from Excel/Sheets:</label>
+                <button onclick="showBulkPaste()">Show Bulk Paste</button>
+                <button onclick="clearAllData()" class="delete">Clear All Data</button>
+            </div>
+            <div id="bulkPasteArea" style="display: none; margin-bottom: 15px;">
+                <textarea id="bulkData" rows="8" placeholder="Paste tab-separated or comma-separated data here. Format: Time Temperature (one per line)&#10;Example:&#10;14:30	500&#10;15:00	750&#10;15:30	900"></textarea>
+                <div style="margin-top: 10px;">
+                    <button onclick="importBulkData()">Import Data</button>
+                    <button onclick="hideBulkPaste()">Cancel</button>
+                </div>
+            </div>
+
             <div class="input-group">
                 <label>Time (HH:MM):</label>
                 <input type="text" id="timestamp" placeholder="14:30">
@@ -127,6 +155,13 @@
             <p class="help-text">Adjust these parameters to fit the exponential decay curve to your cooling data.</p>
             <div class="cooling-params">
                 <div class="input-group">
+                    <label>Cooling Start Point:</label>
+                    <select id="coolingStartPoint" onchange="onCoolingStartChanged()">
+                        <option value="auto">Auto-detect (peak temperature)</option>
+                    </select>
+                    <span class="help-text">Select when cooling begins</span>
+                </div>
+                <div class="input-group">
                     <label>Ambient Temp:</label>
                     <input type="number" id="ambientTemp" value="20" step="1">
                     <span class="help-text">The minimum temperature the kiln will cool to</span>
@@ -134,7 +169,11 @@
                 <div class="input-group">
                     <label>Decay Rate:</label>
                     <input type="number" id="decayRate" value="0.5" step="0.01" min="0.01">
-                    <span class="help-text">How quickly the kiln cools (higher = faster cooling)</span>
+                    <label style="width: auto; margin-left: 20px;">
+                        <input type="checkbox" id="autoFitDecay" checked onchange="onAutoFitChanged()">
+                        Auto-fit to data
+                    </label>
+                    <span class="help-text" style="display: block; margin-left: 150px;">How quickly the kiln cools (higher = faster cooling)</span>
                 </div>
                 <div class="input-group">
                     <label>Extrapolate Hours:</label>
