@@ -279,35 +279,48 @@ function calculateCoolingCurve(startTime, startTemp, ambientTemp, decayRate, hou
     return points;
 }
 
-// Fit exponential decay to cooling data points
-// Returns the best-fit decay rate using least squares
-function fitCoolingModel(coolingPoints, ambientTemp) {
-    if (coolingPoints.length < 2) return 0.5; // Default value
-
-    // Use the first point as reference
+// Calculate error for a given decay rate
+function calculateDecayError(rate, coolingPoints, ambientTemp) {
     const t0 = coolingPoints[0].hours;
     const T0 = coolingPoints[0].temp;
 
-    // Try to find best decay rate
-    let bestRate = 0.5;
-    let bestError = Infinity;
+    let error = 0;
+    for (let point of coolingPoints) {
+        const dt = point.hours - t0;
+        const predicted = ambientTemp + (T0 - ambientTemp) * Math.exp(-rate * dt);
+        error += Math.pow(predicted - point.temp, 2);
+    }
 
-    // Test different decay rates
-    for (let rate = 0.1; rate <= 2.0; rate += 0.05) {
-        let error = 0;
-        for (let point of coolingPoints) {
-            const dt = point.hours - t0;
-            const predicted = ambientTemp + (T0 - ambientTemp) * Math.exp(-rate * dt);
-            error += Math.pow(predicted - point.temp, 2);
-        }
+    return error;
+}
 
-        if (error < bestError) {
-            bestError = error;
-            bestRate = rate;
+// Fit exponential decay to cooling data points using ternary search
+// Returns the best-fit decay rate using least squares with high precision
+function fitCoolingModel(coolingPoints, ambientTemp) {
+    if (coolingPoints.length < 2) return 0.5; // Default value
+
+    // Use ternary search to find the optimal decay rate
+    // This works because the error function is unimodal (has one minimum)
+    let left = 0.01;   // Minimum possible decay rate
+    let right = 5.0;   // Maximum reasonable decay rate
+    const epsilon = 1e-6; // Precision target
+
+    // Ternary search for minimum error
+    while (right - left > epsilon) {
+        const mid1 = left + (right - left) / 3;
+        const mid2 = right - (right - left) / 3;
+
+        const error1 = calculateDecayError(mid1, coolingPoints, ambientTemp);
+        const error2 = calculateDecayError(mid2, coolingPoints, ambientTemp);
+
+        if (error1 > error2) {
+            left = mid1;
+        } else {
+            right = mid2;
         }
     }
 
-    return bestRate;
+    return (left + right) / 2;
 }
 
 // Identify cooling phase (when temperature starts decreasing)
