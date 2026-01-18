@@ -279,19 +279,43 @@ function calculateCoolingCurve(startTime, startTemp, ambientTemp, decayRate, hou
     return points;
 }
 
-// Calculate error for a given decay rate
+// Calculate error for a given decay rate with time-weighting
+// Each point is weighted by the time interval it represents
 function calculateDecayError(rate, coolingPoints, ambientTemp) {
     const t0 = coolingPoints[0].hours;
     const T0 = coolingPoints[0].temp;
 
-    let error = 0;
-    for (let point of coolingPoints) {
+    let weightedError = 0;
+
+    for (let i = 0; i < coolingPoints.length; i++) {
+        const point = coolingPoints[i];
         const dt = point.hours - t0;
         const predicted = ambientTemp + (T0 - ambientTemp) * Math.exp(-rate * dt);
-        error += Math.pow(predicted - point.temp, 2);
+        const squaredError = Math.pow(predicted - point.temp, 2);
+
+        // Calculate the time interval this point represents
+        let weight = 0;
+        if (i === 0) {
+            // First point: half the distance to next point
+            if (coolingPoints.length > 1) {
+                weight = (coolingPoints[1].hours - coolingPoints[0].hours) / 2;
+            } else {
+                weight = 1; // Single point, arbitrary weight
+            }
+        } else if (i === coolingPoints.length - 1) {
+            // Last point: half the distance from previous point
+            weight = (coolingPoints[i].hours - coolingPoints[i-1].hours) / 2;
+        } else {
+            // Middle points: average of distances to neighbors
+            const dtBefore = coolingPoints[i].hours - coolingPoints[i-1].hours;
+            const dtAfter = coolingPoints[i+1].hours - coolingPoints[i].hours;
+            weight = (dtBefore + dtAfter) / 2;
+        }
+
+        weightedError += squaredError * weight;
     }
 
-    return error;
+    return weightedError;
 }
 
 // Fit exponential decay to cooling data points using ternary search
