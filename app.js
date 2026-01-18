@@ -564,6 +564,187 @@ function toggleSection(sectionId) {
     }
 }
 
+// ========== SAVED RUNS FUNCTIONALITY ==========
+
+const STORAGE_KEY = 'kilnwatch_saved_runs';
+const STORAGE_VERSION = 1; // For future compatibility
+
+// Get all saved runs from local storage
+function getSavedRuns() {
+    try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        if (!data) return [];
+        const parsed = JSON.parse(data);
+        // Future-proof: handle version migrations if needed
+        return parsed.runs || [];
+    } catch (e) {
+        console.error('Error loading saved runs:', e);
+        return [];
+    }
+}
+
+// Save runs to local storage
+function saveSavedRuns(runs) {
+    try {
+        const data = {
+            version: STORAGE_VERSION,
+            runs: runs
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+        console.error('Error saving runs:', e);
+        alert('Failed to save run. Your browser storage might be full.');
+    }
+}
+
+// Save current run
+function saveCurrentRun() {
+    const runName = document.getElementById('runName').value.trim();
+
+    if (dataPoints.length === 0) {
+        alert('No data points to save. Please add some temperature readings first.');
+        return;
+    }
+
+    // Generate default name if not provided
+    const name = runName || `Kiln Run ${new Date().toLocaleDateString()}`;
+
+    // Create run object
+    const run = {
+        id: Date.now(), // Unique ID based on timestamp
+        name: name,
+        savedDate: new Date().toISOString(),
+        dataPoints: [...dataPoints],
+        segments: [...segments],
+        coolingParams: {
+            manualCoolingStartIndex: manualCoolingStartIndex,
+            ambientTemp: parseFloat(document.getElementById('ambientTemp').value),
+            decayRate: parseFloat(document.getElementById('decayRate').value),
+            autoFitDecay: document.getElementById('autoFitDecay').checked,
+            extrapolateHours: parseFloat(document.getElementById('extrapolateHours').value)
+        }
+    };
+
+    // Save to storage
+    const runs = getSavedRuns();
+    runs.unshift(run); // Add to beginning of array
+    saveSavedRuns(runs);
+
+    // Clear run name input
+    document.getElementById('runName').value = '';
+
+    // Update display
+    updateSavedRunsList();
+
+    alert(`Run "${name}" saved successfully!`);
+}
+
+// Load a saved run
+function loadRun(runId) {
+    const runs = getSavedRuns();
+    const run = runs.find(r => r.id === runId);
+
+    if (!run) {
+        alert('Run not found.');
+        return;
+    }
+
+    if (!confirm(`Load "${run.name}"? This will replace your current data.`)) {
+        return;
+    }
+
+    // Load data points
+    dataPoints = [...run.dataPoints];
+
+    // Load segments
+    segments = [...run.segments];
+
+    // Load cooling parameters
+    manualCoolingStartIndex = run.coolingParams.manualCoolingStartIndex;
+    document.getElementById('ambientTemp').value = run.coolingParams.ambientTemp;
+    document.getElementById('decayRate').value = run.coolingParams.decayRate;
+    document.getElementById('autoFitDecay').checked = run.coolingParams.autoFitDecay;
+    document.getElementById('extrapolateHours').value = run.coolingParams.extrapolateHours;
+
+    // Update UI
+    updateDataTable();
+    updateSegmentTable();
+    updateChart();
+
+    // Restore cooling start point selection
+    if (manualCoolingStartIndex !== null) {
+        document.getElementById('coolingStartPoint').value = manualCoolingStartIndex;
+    }
+
+    alert(`Run "${run.name}" loaded successfully!`);
+}
+
+// Delete a saved run
+function deleteRun(runId) {
+    const runs = getSavedRuns();
+    const run = runs.find(r => r.id === runId);
+
+    if (!run) {
+        alert('Run not found.');
+        return;
+    }
+
+    if (!confirm(`Delete "${run.name}"? This cannot be undone.`)) {
+        return;
+    }
+
+    const filteredRuns = runs.filter(r => r.id !== runId);
+    saveSavedRuns(filteredRuns);
+    updateSavedRunsList();
+}
+
+// Update the saved runs list display
+function updateSavedRunsList() {
+    const container = document.getElementById('savedRunsList');
+    const runs = getSavedRuns();
+
+    if (runs.length === 0) {
+        container.innerHTML = '<p class="help-text">No saved runs yet.</p>';
+        return;
+    }
+
+    let html = '';
+    runs.forEach(run => {
+        const date = new Date(run.savedDate);
+        const dateStr = date.toLocaleString();
+        const pointCount = run.dataPoints.length;
+        const tempRange = pointCount > 0
+            ? `${Math.min(...run.dataPoints.map(p => p.temp)).toFixed(0)}°C - ${Math.max(...run.dataPoints.map(p => p.temp)).toFixed(0)}°C`
+            : 'No data';
+
+        html += `
+            <div class="saved-run-item">
+                <div class="saved-run-info">
+                    <div class="saved-run-name">${escapeHtml(run.name)}</div>
+                    <div class="saved-run-date">Saved: ${dateStr}</div>
+                    <div class="saved-run-details">${pointCount} data points • ${tempRange}</div>
+                </div>
+                <div class="saved-run-actions">
+                    <button onclick="loadRun(${run.id})">Load</button>
+                    <button class="delete" onclick="deleteRun(${run.id})">Delete</button>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+
+    // Update section height after list changes
+    setTimeout(() => updateSectionHeight('savedRunsContent'), 0);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // Initialize section heights and chart on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Set initial max-height for all section-content divs
@@ -571,6 +752,9 @@ document.addEventListener('DOMContentLoaded', function() {
     sections.forEach(section => {
         section.style.maxHeight = section.scrollHeight + 'px';
     });
+
+    // Load saved runs list
+    updateSavedRunsList();
 
     updateChart();
 });

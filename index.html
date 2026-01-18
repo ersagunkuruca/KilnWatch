@@ -127,6 +127,38 @@
             border-radius: 4px;
             width: 300px;
         }
+        .saved-run-item {
+            background-color: #f9f9f9;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .saved-run-info {
+            flex-grow: 1;
+        }
+        .saved-run-name {
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+        }
+        .saved-run-date {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .saved-run-details {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .saved-run-actions {
+            display: flex;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -137,6 +169,24 @@
             <h2>Temperature Graph</h2>
             <div id="chartContainer">
                 <canvas id="temperatureChart"></canvas>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 onclick="toggleSection('savedRunsContent')">
+                <span>Saved Kiln Runs</span>
+                <span class="collapse-btn" id="savedRunsContent-btn">[Collapse]</span>
+            </h2>
+            <div class="section-content" id="savedRunsContent">
+                <p class="help-text">Save and load kiln runs for future reference. Data persists in browser local storage.</p>
+                <div class="input-group">
+                    <label>Run Name:</label>
+                    <input type="text" id="runName" placeholder="e.g., Glaze firing April 2024">
+                    <button onclick="saveCurrentRun()">Save Current Run</button>
+                </div>
+                <div id="savedRunsList" style="margin-top: 15px;">
+                    <p class="help-text">No saved runs yet.</p>
+                </div>
             </div>
         </div>
 
